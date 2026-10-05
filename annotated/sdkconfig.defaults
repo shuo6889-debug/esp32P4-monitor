@@ -1,0 +1,54 @@
+# =============================================================================
+#  sdkconfig.defaults —— 工程默认配置（带注释副本）
+# =============================================================================
+#  这个文件的作用：idf.py 第一次为工程生成 sdkconfig 时，会把这些值作为默认项写进去。
+#  它让工程「换一台电脑 clone 下来就能用」，而不必口头交代「记得去 menuconfig 里打开 XX」。
+#
+#  与 sdkconfig 的区别（初学者最容易混淆的一点）：
+#    · sdkconfig.defaults —— 靠人手写的「意图」，可以进 git
+#    · sdkconfig          —— 构建系统生成的完整配置快照（几千行），含一切默认值
+#  改了 defaults 后要生效，通常需要删掉 sdkconfig 重新生成，
+#  或直接跑 idf.py menuconfig 手工调整。
+# =============================================================================
+
+# Waveshare RPi Camera (B) uses the OV5647 MIPI CSI sensor.
+# 中文补充：指定使用 OV5647 传感器驱动。
+# 如果不指定型号，官方组件也支持自动探测，但显式指定可以：
+#   1) 减小固件体积（只编译一种传感器驱动）
+#   2) 避免自动探测在接线有干扰时误判型号
+CONFIG_CAMERA_OV5647=y
+CONFIG_CAMERA_OV5647_AUTO_DETECT_MIPI_INTERFACE_SENSOR=y
+# ↑ 允许驱动自动探测该传感器是否接在 MIPI 接口上
+
+# 下面两行把「传感器输出格式」编译进驱动：
+# 必须与 main/example_config.h 里的 EXAMPLE_CAM_FORMAT 相互对应
+# （一个是「驱动里编译进哪些格式」，一个是「运行时挑哪一个用」）。
+CONFIG_CAMERA_OV5647_MIPI_RAW8_800X640_50FPS=y
+CONFIG_CAMERA_OV5647_MIPI_DEFAULT_FMT_RAW8_800X640_50FPS=y
+
+# The board reports a 16 MB flash device.
+# 中文补充：声明板载 flash 为 16MB。
+# 写小了会导致固件末尾被截断或 OTA 分区放不下；写大了烧录时会报错。
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="16MB"
+
+# CSI frame and backup buffers are allocated from PSRAM.
+# 中文补充：这三行是本工程「能不能跑起来」的前提，缺一不可。
+#   一帧 800x640x2 ≈ 1MB，两帧缓冲 + 两帧 JPEG 缓冲接近 4MB，
+#   而 P4 的内部 SRAM 只有几百 KB，所以图像数据必须放进 PSRAM。
+CONFIG_SPIRAM=y
+# ↑ 启用外部 PSRAM
+
+CONFIG_SPIRAM_MODE_HEX=y
+# ↑ 使用 HEX 模式（P4 上 PSRAM 的接线/时序模式）。
+#   【坑点】如果板子实际不是 HEX 模式，PSRAM 会完全认不到，
+#   表现为运行到分配摄像头缓冲区时失败并提示内存不足。
+
+CONFIG_SPIRAM_SPEED_200M=y
+# ↑ PSRAM 跑 200MHz，带宽更高，对高分辨率高帧率推流影响很大。
+
+# ESP-Hosted SDIO recommends a 1 kHz FreeRTOS tick for stable bus timing.
+# 中文补充：把 FreeRTOS 系统节拍设为 1000Hz（默认 100Hz，即每 10ms 一次）。
+# 原因：P4 与 C6 之间的 SDIO 通信对时序敏感，官方建议用 1ms 精度的节拍。
+# 副作用：节拍变快会让任务切换更频繁、空转功耗略升，属于可接受的常规取舍。
+CONFIG_FREERTOS_HZ=1000

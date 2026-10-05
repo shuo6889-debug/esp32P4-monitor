@@ -1,0 +1,78 @@
+// =============================================================================
+//  .vscode/settings.json —— VS Code 工作区设置（带注释副本）
+// =============================================================================
+//  注意：这两个 .vscode 下的是 JSONC（JSON with Comments），
+//  VS Code 允许 // 注释，但普通 JSON 解析器会报错——别把它喂给别的工具。
+//
+//  这个文件决定了「在 VS Code 里写这个工程有多顺手」：
+//  做了三件事——让 ESP-IDF 扩展生效、让代码补全能找到头文件、指定串口号。
+// =============================================================================
+{
+  "C_Cpp.intelliSenseEngine": "default",
+  // ↑ 用 VS Code 自带的 IntelliSense 引擎（而不是旧版的 Tag Parser）
+
+  "idf.extensionActivationMode": "always",
+  // ↑ 让 ESP-IDF 扩展总是激活。设为 always 可以避免「打开工程后
+  //   底部 IDF 状态栏半天不出现」的情况。
+
+  "cmake.configureOnOpen": false,
+  "cmake.configureOnEdit": false,
+  "cmake.automaticReconfigure": false,
+  // ↑ 这三项全部关掉，是为了【避免 CMake 与 idf.py 抢着配置工程】。
+  //   ESP-IDF 工程必须由 idf.py 来驱动（它要准备工具链、组件、sdkconfig），
+  //   如果让 CMake Tools 扩展自动 configure，很容易把 build/ 目录搞成半损坏状态，
+  //   之后 idf.py build 就会报奇怪的错。这是 ESP-IDF + VS Code 的经典坑。
+
+  "cmake.autoSelectActiveFolder": false,
+  "cmake.options.advanced": {
+    "build": {
+      "statusBarVisibility": "inherit",
+      "inheritDefault": "hidden"
+    },
+    "launch": {
+      "statusBarVisibility": "inherit",
+      "inheritDefault": "hidden"
+    },
+    "debug": {
+      "statusBarVisibility": "inherit",
+      "inheritDefault": "hidden"
+    }
+  },
+  // ↑ 把 CMake 扩展的 Build/Launch/Debug 按钮从状态栏藏起来，
+  //   眼不见心不烦，统一用 IDF 扩展的按钮操作。
+
+  "idf.openOcdConfigs": [
+    "board/esp32p4-builtin.cfg"
+    // ↑ 用 P4 内置的 JTAG 调试目标配置（想单步调试、看变量时用）
+  ],
+
+  "idf.port": "COM5",
+  // ↑ 默认串口。换电脑或换 USB 口后，这个号会变，
+  //   不改的话 idf.py flash monitor 会连不上。用设备管理器查实际端口号。
+
+  "idf.currentSetup": "D:\\ESP_IDF\\v6.1\\esp-idf",
+  // ↑ 本机使用的 ESP-IDF 安装路径（对应 sdkconfig 与依赖里看到的 6.1.0 版本）
+
+  "idf.customExtraVars": {
+    "IDF_TARGET": "esp32p4"
+    // ↑ 目标芯片。它决定了 sdkconfig 里所有 CONFIG_IDF_TARGET_ESP32P4 之类的开关，
+    //   也决定链接哪一份工具链。改这里等于换芯片型号。
+  },
+
+  "clangd.path": "C:\\Espressif\\tools\\esp-clangd\\esp-21.1.3_20260408\\esp-clangd\\bin\\clangd.exe",
+  // ↑ 用乐鑫打包的 clangd 做「跳转定义 / 补全」，比 IntelliSense 更懂 IDF 的宏
+
+  "clangd.arguments": [
+    "--background-index",
+    "--query-driver=**",
+    // ↑ 允许 clangd 直接询问编译器以获取真实的 include 路径与内置宏，
+    //   否则 clangd 会看不懂 GCC 特有的东西，满屏红色波浪线。
+    "--compile-commands-dir=d:\\espidf\\jianshi\\build"
+    // ↑ 从 build/compile_commands.json 里读每个文件的编译参数。
+    //   这意味着：必须先成功构建过一次，代码补全才准确。
+    //   新 clone 下来满屏报红时，先跑一次 idf.py build 通常就好了。
+  ],
+
+  "idf.flashType": "UART"
+  // ↑ 用串口下载（最通用）。若接了 USB-JTAG 也可以改成 JTAG。
+}

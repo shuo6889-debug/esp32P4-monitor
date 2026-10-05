@@ -1,0 +1,41 @@
+# =============================================================================
+#  main/idf_component.yml —— 组件管理器清单（带注释副本）
+# =============================================================================
+#  这个文件交给 ESP-IDF 的「组件管理器」读取。执行 idf.py reconfigure/build 时，
+#  它会根据这里的内容去 components.espressif.com 下载第三方组件到
+#  managed_components/ 目录，并把结果记进 dependencies.lock（锁定精确版本）。
+#
+#  你可以把它理解为 ESP-IDF 界的 package.json / requirements.txt。
+#  它解决的痛点：ESP-Hosted、摄像头传感器驱动这类组件版本迭代快，
+#  用组件管理器 + 版本区间约束，比手工往 components/ 里拷源码可靠得多。
+# =============================================================================
+
+dependencies:
+  idf:
+    version: ">=6.1.0"     # 要求 ESP-IDF 版本不低于 6.1.0（本工程在 6.1.0 上验证）
+
+  # ---- 让 P4 拥有 Wi-Fi 的关键两颗组件 ----
+  # 两者都只在 esp32p4 / esp32h2 这两个「没有射频」的芯片上才需要：
+  #   · esp_wifi_remote：提供与 esp_wifi_* 同名同签名的 API，
+  #     内部把调用转发到远端芯片，写代码的人感觉不到差别。
+  #   · esp_hosted：负责 P4 与 ESP32-C6 之间的 SDIO 传输层，
+  #     即真正的「管道」。wifi_remote 依赖它。
+  # rules 的 if 条件保证了：换成 ESP32-S3 这类自带 Wi-Fi 的芯片时，
+  # 这两个组件不会被引入，代码里的 esp_hosted_init() 也就不会被链接。
+  espressif/esp_wifi_remote:
+    version: ">=1.3.1,<2.0"
+    rules:
+      - if: "target in [esp32p4, esp32h2]"
+  espressif/esp_hosted:
+    version: "~2"          # ~2 表示 2.x 里最新的，但不跨到 3.0
+    rules:
+      - if: "target in [esp32p4, esp32h2]"
+
+  # ---- 本地组件：直接引用 ESP-IDF 安装目录里的官方例程代码 ----
+  # sensor_init 并不是从网上下载的，而是 IDF 自带例程里的公共组件
+  # （examples/peripherals/camera/common_components/sensor_init）。
+  # path 里的 ${IDF_PATH} 是构建时展开的环境变量。
+  # 它封装了「逐个尝试探测器 → 认出型号 → 灌入该型号寄存器配置」的全过程，
+  # 让 main.cpp 只需要几行代码就能支持一堆不同型号的摄像头。
+  sensor_init:
+    path: ${IDF_PATH}/examples/peripherals/camera/common_components/sensor_init
